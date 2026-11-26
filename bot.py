@@ -32,8 +32,10 @@ def telegram_gonder(mesaj):
         "text": mesaj,
         "parse_mode": "HTML",
         "disable_web_page_preview": True
-    }
-    requests.post(url, data=veri, timeout=15)
+    }    sonuc = requests.post(url, data=veri, timeout=15)
+    print("Telegram cevabı:", sonuc.text)
+
+    
 
 def ilanlari_tara():
     ilk_kurulum = not os.path.exists(KAYIT_DOSYASI)

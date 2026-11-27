@@ -1,21 +1,21 @@
 import os
 import json
 import requests
-import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 
 BOT_TOKEN = os.environ["BOT_TOKEN"].strip()
 CHAT_ID = os.environ["CHAT_ID"].strip()
 
-# Sadece Ortaöğretim (Lise / P94) hedef kelimeleri
+# Ortaöğretim (Lise / P94) ve ilgili kamu kadro kelimeleri
 HEDEF_KELIMELER = [
-    "ortaöğretim", "p94", "kpssp94", "lise mezunu", "lise düzeyinde",
-    "koruma ve güvenlik", "destek personeli", "şoför", "temizlik", "hizmetli", "mübaşir", "infaz ve koruma"
+    "ortaöğretim", "p94", "kpssp94", "lise", "koruma ve güvenlik",
+    "güvenlik görevlisi", "destek personeli", "şoför", "hizmetli",
+    "mübaşir", "infaz ve koruma", "sözleşmeli personel", "memur alım", "personel alım"
 ]
 
-# Sadece yükseköğretim alımı olan ilanları elemek için yasaklı kelimeler
+# Sadece yükseköğretim alımı olan ilanları elemek için
 HARIC_KELIMELER = [
-    "sadece lisans", "sadece ön lisans", "önlisans mezunu", "lisans mezunu", "kpssp3", "kpssp93"
+    "sadece lisans", "sadece ön lisans", "önlisans mezunu", "lisans mezunu", "kpssp3", "kpssp93", "akademik personel", "öğretim üyesi", "araştırma görevlisi"
 ]
 
 KAYIT_DOSYASI = "gonderilenler.json"
@@ -42,7 +42,6 @@ def telegram_gonder(mesaj):
 
 def p94_uygun_mu(metin):
     m = metin.lower()
-    # Eğer ilanda açıkça sadece lisans/önlisans diyorsa ve ortaöğretim geçmiyorsa ele
     if any(h in m for h in HARIC_KELIMELER) and ("ortaöğretim" not in m and "p94" not in m and "lise" not in m):
         return False
     return any(k in m for k in HEDEF_KELIMELER)
@@ -52,7 +51,7 @@ def ilanlari_tara():
     yeni_eklenen = False
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
-    # Kaynak 1: Resmi Gazete (Kamu Personel Alım İlanları)
+    # Kaynak 1: Doğrudan T.C. Resmi Gazete (Çeşitli İlanlar - Kamu Alımları)
     try:
         cevap = requests.get("https://www.resmigazete.gov.tr", headers=headers, timeout=20)
         cevap.encoding = "utf-8"
@@ -67,14 +66,15 @@ def ilanlari_tara():
 
             tam_link = href if href.startswith("http") else f"https://www.resmigazete.gov.tr/{href.lstrip('/')}"
 
-            if tam_link in gonderilenler:
+            # Sadece resmi devlet (.gov.tr) ilan linklerini al
+            if ".gov.tr" not in tam_link or tam_link in gonderilenler:
                 continue
 
-            if ("personel" in baslik.lower() or "alım" in baslik.lower() or "memur" in baslik.lower()) and p94_uygun_mu(baslik):
+            if ("personel" in baslik.lower() or "alım" in baslik.lower() or "memur" in baslik.lower() or "sınav" in baslik.lower()) and p94_uygun_mu(baslik):
                 mesaj = (
-                    f"🏛 <b>RESMİ GAZETE (ORTAÖĞRETİM / P94)</b>\n\n"
+                    f"🏛 <b>RESMİ GAZETE KAMU İLANI (P94 / ORTAÖĞRETİM)</b>\n\n"
                     f"📌 <b>Kurum / İlan:</b> {baslik}\n\n"
-                    f"🔗 <b>İlan Detayı:</b>\n{tam_link}"
+                    f"🔗 <b>Resmi İlan Metni:</b>\n{tam_link}"
                 )
                 telegram_gonder(mesaj)
                 gonderilenler.append(tam_link)
@@ -82,32 +82,36 @@ def ilanlari_tara():
     except Exception as e:
         print("RG hata:", e)
 
-    # Kaynak 2: Doğrudan KPSS Ortaöğretim (P94) Kamu Alım Duyuruları
+    # Kaynak 2: SBB Resmi Kamu İlan Portalı (kamuilan.sbb.gov.tr)
     try:
-        rss_url = "https://news.google.com/rss/search?q=(%22orta%C3%B6%C4%9Fretim%22+OR+%22P94%22+OR+%22lise+mezunu%22)+%22personel+al%C4%B1m%C4%B1%22+kpss&hl=tr&gl=TR&ceid=TR:tr"
-        rss_cevap = requests.get(rss_url, headers=headers, timeout=20)
-        kok = ET.fromstring(rss_cevap.content)
+        sbb_url = "https://kamuilan.sbb.gov.tr"
+        sbb_cevap = requests.get(sbb_url, headers=headers, timeout=20)
+        sbb_cevap.encoding = "utf-8"
+        sbb_soup = BeautifulSoup(sbb_cevap.text, "html.parser")
 
-        for item in kok.findall(".//item")[:12]:
-            baslik = item.find("title").text
-            link = item.find("link").text
-            tarih = item.find("pubDate").text if item.find("pubDate") is not None else ""
+        for a in sbb_soup.find_all("a", href=True):
+            baslik = a.get_text(strip=True)
+            href = a["href"]
 
-            if link in gonderilenler:
+            if len(baslik) < 15:
+                continue
+
+            tam_link = href if href.startswith("http") else f"https://kamuilan.sbb.gov.tr/{href.lstrip('/')}"
+
+            if tam_link in gonderilenler:
                 continue
 
             if p94_uygun_mu(baslik):
                 mesaj = (
-                    f"🎯 <b>KPSS ORTAÖĞRETİM (P94) İLANI</b>\n\n"
-                    f"📌 <b>İlan:</b> {baslik}\n"
-                    f"🗓 <b>Tarih:</b> {tarih[:16]}\n\n"
-                    f"🔗 <b>Başvuru ve Şartlar:</b>\n{link}"
+                    f"📢 <b>KAMU İLAN PORTALI (ORTAÖĞRETİM / P94)</b>\n\n"
+                    f"📌 <b>Kurum / İlan:</b> {baslik}\n\n"
+                    f"🔗 <b>Resmi Başvuru Sayfası:</b>\n{tam_link}"
                 )
                 telegram_gonder(mesaj)
-                gonderilenler.append(link)
+                gonderilenler.append(tam_link)
                 yeni_eklenen = True
     except Exception as e:
-        print("RSS hata:", e)
+        print("SBB hata:", e)
 
     if yeni_eklenen:
         kayitlari_kaydet(gonderilenler)

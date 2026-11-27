@@ -1,3 +1,4 @@
+
 import os
 import json
 import requests
@@ -69,8 +70,3 @@ def ilanlari_tara():
             # Sadece resmi devlet (.gov.tr) ilan linklerini al
             if ".gov.tr" not in tam_link or tam_link in gonderilenler:
                 continue
-
-)
-
-if __name__ == "__main__":
-    ilanlari_tara()

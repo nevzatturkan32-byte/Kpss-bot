@@ -56,7 +56,7 @@ def ozetle(url, h):
         )
     except Exception:
         return None 
-                def tara():
+    def tara():
     if os.path.exists(DOSYA):
         with open(DOSYA, "r", encoding="utf-8") as f:
             eski = json.load(f)

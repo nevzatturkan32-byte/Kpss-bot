@@ -1,15 +1,15 @@
-import os
+
+         import os
 import json
 import requests
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 
-BOT_TOKEN = os.environ["BOT_TOKEN"]
-CHAT_ID = os.environ["CHAT_ID"]
+BOT_TOKEN = os.environ["BOT_TOKEN"].strip()
+CHAT_ID = os.environ["CHAT_ID"].strip()
 
-# Takip etmek istediğin kelimeler
 ANAHTAR_KELIMELER = [
-    "kpss", "sözleşmeli", "memur", "personel", "güvenlik", 
+    "kpss", "sözleşmeli", "memur", "personel", "güvenlik",
     "büro", "destek", "koruma", "alım", "atama", "üniversite", "bakanlığı"
 ]
 
@@ -32,38 +32,31 @@ def telegram_gonder(mesaj):
         "text": mesaj,
         "parse_mode": "HTML",
         "disable_web_page_preview": True
-    }    sonuc = requests.post(url, data=veri, timeout=15)
-    print("Telegram cevabı:", sonuc.text)
-
-    
+    }
+    sonuc = requests.post(url, data=veri, timeout=15)
+    print("Telegram cevabi:", sonuc.text)
 
 def ilanlari_tara():
-    ilk_kurulum = not os.path.exists(KAYIT_DOSYASI)
     gonderilenler = kayitlari_yukle()
     yeni_eklenen = False
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
-    if ilk_kurulum:
-        telegram_gonder("✅ <b>KPSS İlan Botun Aktif Edildi!</b>\nResmi kaynaklar taranıyor, uygun ilanlar aşağıya düşecek...")
-        yeni_eklenen = True
+    telegram_gonder("✅ <b>KPSS İlan Botun Aktif!</b>\nGüncel kamu ilanları taranıyor...")
 
-    # Kaynak 1: Resmi Gazete (Çeşitli İlanlar - Kamu Personel Alımları)
     try:
-        rg_url = "https://www.resmigazete.gov.tr/ilanlar/eskiilanlar/2026/11/20261127-4.htm"
-        # Güncel Resmi Gazete ana ilan sayfasını çekelim
         cevap = requests.get("https://www.resmigazete.gov.tr", headers=headers, timeout=20)
         cevap.encoding = "utf-8"
         soup = BeautifulSoup(cevap.text, "html.parser")
-        
+
         for link_etiketi in soup.find_all("a", href=True):
             baslik = link_etiketi.get_text(strip=True)
             href = link_etiketi["href"]
-            
+
             if len(baslik) < 15:
                 continue
-                
+
             tam_link = href if href.startswith("http") else f"https://www.resmigazete.gov.tr/{href.lstrip('/')}"
-            
+
             if tam_link in gonderilenler:
                 continue
 
@@ -79,7 +72,6 @@ def ilanlari_tara():
     except Exception as e:
         print("RG hata:", e)
 
-    # Kaynak 2: Kamu Personel Alım Haberleri & Duyuruları (Google News Resmi Kamu Akışı)
     try:
         rss_url = "https://news.google.com/rss/search?q=kpss+s%C3%B6zle%C5%9Fmeli+personel+al%C4%B1m%C4%B1+site:gov.tr&hl=tr&gl=TR&ceid=TR:tr"
         rss_cevap = requests.get(rss_url, headers=headers, timeout=20)
@@ -110,3 +102,4 @@ def ilanlari_tara():
 
 if __name__ == "__main__":
     ilanlari_tara()
+       

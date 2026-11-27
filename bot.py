@@ -7,18 +7,20 @@ from bs4 import BeautifulSoup
 TOKEN = os.environ["BOT_TOKEN"].strip()
 CHAT = os.environ["CHAT_ID"].strip()
 KARIYER = "https://isealimkariyerkapisi.cbiko.gov.tr"
+ISKUR = "https://www.iskur.gov.tr/iskur/kurum-disi-kamu-isci-alimi-ilanlari/"
 DOSYA = "gonderilenler.json"
 
 P94 = [
     "ortaöğretim", "p94", "kpssp94",
     "lise", "güvenlik", "destek personeli",
     "şoför", "hizmetli", "mübaşir",
-    "infaz ve koruma"
+    "infaz ve koruma", "zabıta", "itfaiye"
 ]
 
 ALIM = [
     "personel", "alım", "memur",
-    "sınav", "sözleşmeli", "kadro"
+    "sınav", "sözleşmeli", "kadro",
+    "belediye", "işçi", "işçisi", "a.ş."
 ]
 
 def gonder(msg):
@@ -32,6 +34,11 @@ def gonder(msg):
     requests.post(u, data=d, timeout=15)
 
 def ozetle(url, h):
+    if url.lower().endswith(".pdf"):
+        return (
+            "<b>Tür:</b> İŞKUR Kurum Dışı PDF İlanı\n"
+            "<b>Not:</b> KPSS şartı olmayan belediye şirketi alımı olabilir.\n\n"
+        )
     try:
         r = requests.get(url, headers=h, timeout=15)
         r.encoding = r.apparent_encoding or "utf-8"
@@ -40,19 +47,19 @@ def ozetle(url, h):
             x.decompose()
         m = " ".join(s.get_text(" ").split())
         mk = m.lower()
-        kriter = ["ortaöğretim", "p94", "kpssp94", "lise mezunu"]
+        kriter = ["ortaöğretim", "p94", "kpssp94", "lise mezunu", "lise düzeyinde"]
         if not any(k in mk for k in kriter):
             return None
         p = re.search(r'(50|55|60|65|70|75|80)\s*puan', mk)
         ps = f"{p.group(1)} Puan" if p else "İlanda"
         if "sınav yapılmayacaktır" in mk or "puan sıralaması" in mk:
-            ms = "⭐ Mülakatsız"
+            ms = "Mülakatsız"
         else:
-            ms = "🗣️ Mülakat/Sözlü"
+            ms = "Mülakat/Sözlü"
         return (
-            f"🎯 <b>Puan:</b> {ps}\n"
-            f"⚖️ <b>Tür:</b> {ms}\n"
-            f"📝 <b>Özet:</b> <i>{m[:260]}...</i>\n\n"
+            f"<b>Puan:</b> {ps}\n"
+            f"<b>Tür:</b> {ms}\n"
+            f"<b>Özet:</b> <i>{m[:260]}...</i>\n\n"
         )
     except Exception:
         return None
@@ -69,7 +76,8 @@ def tara():
     siteler = [
         ("https://www.resmigazete.gov.tr", "RESMİ GAZETE"),
         ("https://kamuilan.sbb.gov.tr", "SBB KAMU İLAN"),
-        (KARIYER, "KARİYER KAPISI")
+        (KARIYER, "KARİYER KAPISI"),
+        (ISKUR, "İŞKUR KURUM DIŞI İŞÇİ")
     ]
 
     for s_url, s_ad in siteler:
@@ -80,26 +88,26 @@ def tara():
             for a in sp.find_all("a", href=True):
                 b = a.get_text(strip=True)
                 hr = a["href"]
-                if len(b) < 15:
+                if len(b) < 10:
                     continue
                 if hr.startswith("http"):
                     lnk = hr
                 else:
                     lnk = f"{s_url}/{hr.lstrip('/')}"
-                if ".gov.tr" not in lnk:
+                if not (".gov.tr" in lnk or ".bel.tr" in lnk):
                     continue
                 if lnk in eski:
                     continue
                 bk = b.lower()
                 if any(k in bk for k in ALIM + P94):
                     oz = ozetle(lnk, h)
-                    if oz or any(p in bk for p in P94):
+                    if oz or any(p in bk for p in P94) or ".pdf" in lnk.lower():
                         msj = (
-                            f"🏛 <b>{s_ad} (P94)</b>\n\n"
-                            f"📌 <b>İlan:</b> {b}\n\n"
+                            f"<b>{s_ad}</b>\n\n"
+                            f"<b>İlan:</b> {b}\n\n"
                             f"{oz or ''}"
-                            f"🔗 <b>İlan:</b>\n{lnk}\n"
-                            f"🚀 <b>Başvuru:</b>\n{KARIYER}"
+                            f"<b>İlan Metni / PDF:</b>\n{lnk}\n"
+                            f"<b>Kariyer Kapısı Başvuru:</b>\n{KARIYER}"
                         )
                         gonder(msj)
                         eski.append(lnk)

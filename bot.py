@@ -55,7 +55,7 @@ def ozetle(url, h):
             f"📝 <b>Özet:</b> <i>{m[:260]}...</i>\n\n"
         )
     except Exception:
-        return None. 
+        return None 
                 def tara():
     if os.path.exists(DOSYA):
         with open(DOSYA, "r", encoding="utf-8") as f:

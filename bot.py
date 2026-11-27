@@ -70,51 +70,7 @@ def ilanlari_tara():
             if ".gov.tr" not in tam_link or tam_link in gonderilenler:
                 continue
 
-            if ("personel" in baslik.lower() or "alım" in baslik.lower() or "memur" in baslik.lower() or "sınav" in baslik.lower()) and p94_uygun_mu(baslik):
-                mesaj = (
-                    f"🏛 <b>RESMİ GAZETE KAMU İLANI (P94 / ORTAÖĞRETİM)</b>\n\n"
-                    f"📌 <b>Kurum / İlan:</b> {baslik}\n\n"
-                    f"🔗 <b>Resmi İlan Metni:</b>\n{tam_link}"
-                )
-                telegram_gonder(mesaj)
-                gonderilenler.append(tam_link)
-                yeni_eklenen = True
-    except Exception as e:
-        print("RG hata:", e)
-
-    # Kaynak 2: SBB Resmi Kamu İlan Portalı (kamuilan.sbb.gov.tr)
-    try:
-        sbb_url = "https://kamuilan.sbb.gov.tr"
-        sbb_cevap = requests.get(sbb_url, headers=headers, timeout=20)
-        sbb_cevap.encoding = "utf-8"
-        sbb_soup = BeautifulSoup(sbb_cevap.text, "html.parser")
-
-        for a in sbb_soup.find_all("a", href=True):
-            baslik = a.get_text(strip=True)
-            href = a["href"]
-
-            if len(baslik) < 15:
-                continue
-
-            tam_link = href if href.startswith("http") else f"https://kamuilan.sbb.gov.tr/{href.lstrip('/')}"
-
-            if tam_link in gonderilenler:
-                continue
-
-            if p94_uygun_mu(baslik):
-                mesaj = (
-                    f"📢 <b>KAMU İLAN PORTALI (ORTAÖĞRETİM / P94)</b>\n\n"
-                    f"📌 <b>Kurum / İlan:</b> {baslik}\n\n"
-                    f"🔗 <b>Resmi Başvuru Sayfası:</b>\n{tam_link}"
-                )
-                telegram_gonder(mesaj)
-                gonderilenler.append(tam_link)
-                yeni_eklenen = True
-    except Exception as e:
-        print("SBB hata:", e)
-
-    if yeni_eklenen:
-        kayitlari_kaydet(gonderilenler)
+)
 
 if __name__ == "__main__":
     ilanlari_tara()

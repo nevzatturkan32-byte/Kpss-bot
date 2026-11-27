@@ -1,4 +1,3 @@
-
 import os
 import json
 import requests
@@ -68,5 +67,4 @@ def ilanlari_tara():
             tam_link = href if href.startswith("http") else f"https://www.resmigazete.gov.tr/{href.lstrip('/')}"
 
             # Sadece resmi devlet (.gov.tr) ilan linklerini al
-            if ".gov.tr" not in tam_link or tam_link in gonderilenler:
-                continue
+            if ".gov.tr" not in 

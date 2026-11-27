@@ -112,4 +112,3 @@ def ozetle(url, h):
 
 if __name__ == "__main__":
     tara()
-
